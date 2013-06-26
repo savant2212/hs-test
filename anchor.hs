@@ -3,6 +3,7 @@ import Data.List
 import Data.Maybe
 import Text.Regex.Base
 import Text.Regex.Posix
+import Text.StringLike
 import Codec.Text.IConv
 import Network.HTTP
 import Text.HTML.TagSoup
@@ -12,7 +13,7 @@ data Tale = Tale {
 					name 	:: String,
 					author 	:: String,
 					genre	:: [String],
-					date	:: Maybe DateTime,
+					date	:: Maybe String,
 					id		:: Int,
 					rate	:: Maybe Float,
 					desc	:: String
@@ -25,17 +26,16 @@ getAnchor f (t:ts) = case (f t) of
                         False ->  getAnchor f ts
 
 						
-parsePage :: String -> Int -> [Tale]
-parsePage link index = do
-				body <- simpleHTTP (getRequest link) >>= getResponseBody
-				elems = filter (\x -> (x ~== TagOpen "p" [("align","justify")]) $ parseTags body
-				--some kind of magic
-				case ( elems == [] ) ->
-					True -> []
-					False -> elems : parsePage link (index + 1)
+--parsePage :: String -> Int -> [Tale]
+--parsePage link index = do
+--				body <- simpleHTTP (getRequest link) >>= getResponseBody
+--				let elems = helper1 $ parseTags body
+--				--some kind of magic
+--				case ( elems == [] ) of
+--					True -> []
+--					False -> elems : parsePage link (index + 1)
 				
-helper1 :: [Tag String] -> [[Tag String]]
+helper1 :: (StringLike str) => [Tag str] -> [[Tag str]]
 helper1 [] 		= []
-helper1 (x:xs)	= case ( x ~== TagOpen "p" [("align","justify")] ) of
-					True	-> let res = span (\x -> x ~/= TagClose "p" [] ) >> [fst res] : helper1 snd res
-					False	-> helper1 xs
+helper1 xs = let res = (span (\x -> x ~/= TagClose "p" ) $ dropWhile ( ~/= TagOpen "p" [("align","justify")] ) xs ) in (drop 1 $ fst res) : (helper1 $ snd res)
+
