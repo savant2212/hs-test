@@ -6,11 +6,14 @@ import Data.Maybe
 import Text.Regex.Base
 import Text.Regex.Posix
 import Control.Concurrent
+import Data.Text.ICU.Convert 
 
 main :: IO ()
 main = do
-    http <- simpleHTTP (getRequest "http://stulchik.net/main.shtml?ras") >>= getResponseBody
+	cnv <- open "CP1251" Nothing 
+    body <- toUnicode cnv $ simpleHTTP (getRequest "http://stulchik.net/main.shtml?ras") >>= getResponseBody
     
-    let categories = getAnchor (\x -> (x ~== TagOpen "a" []) && ( fromAttrib "href" x =~ "ras.shtml\\?kat")) $ parseTags(http)
+    let categories = getAnchor (\x -> (x ~== TagOpen "a" []) && ( fromAttrib "href" x =~ "ras.shtml\\?kat")) $ parseTags(body)
+	
 	
 
