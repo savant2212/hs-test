@@ -23,28 +23,18 @@ data Tale = Tale {
 					desc	:: String
 				} deriving(Show)
 
-getAnchor :: (Tag [Char] -> Bool) -> [Tag [Char]] -> [(String,String)]
+getAnchor :: (Tag String-> Bool) -> [Tag String] -> [(String,String)]
 getAnchor f [] = []
 getAnchor f (t:ts) = case (f t) of
-                        True  -> (fromAttrib "href" t, fromTagText $ head ts) : (getAnchor f ts)
+                        True  -> (takeWhile (/='_') $ fromAttrib "href" t, fromTagText $ head ts) : (getAnchor f ts)
                         False ->  getAnchor f ts
 
-						
-parsePage :: String -> Int -> [Tale]
-parsePage link index = 				
-				body <- getResponseBody =<< simpleHTTP (getRequest (link ++ (show index)))
-				
-				let elems = helper1 $ parseTags body
-				--some kind of magic
-				case ( elems == [] ) of
-					True -> []
-					--False -> map parseBlock elems : parsePage link (index + 1)
-				
-helper1 :: (StringLike str) => [Tag str] -> [[Tag str]]
+					
+helper1 :: [Tag String] -> [[Tag String]]
 helper1 [] 		= []
 helper1 xs = let res = (span (\x -> x ~/= TagClose "p" ) $ dropWhile ( ~/= TagOpen "p" [("align","justify")] ) xs ) in (drop 1 $ fst res) : (helper1 $ snd res)
 
-parseBlock ::[[Tag [Char]]] -> Tale
+parseBlock ::[[Tag String]] -> Tale
 parseBlock x = Tale {
 						name 	= fromTagText $ ( x !! 0 ) !! 5,
 						link 	= fromAttrib "href" $ ( x !! 0 ) !! 4,
