@@ -1,3 +1,20 @@
+import System.IO
+import Network.HTTP
+import Text.HTML.TagSoup
+import Data.List
+import Data.Maybe
+import Text.Regex.Base
+import Text.Regex.Posix
+import Text.StringLike
+
+import Text.HTML.TagSoup
+import Data.Text.ICU.Convert
+import Data.Text (pack, unpack)
+import Data.Char
+import Data.List.Split
+import qualified Data.ByteString.Char8 as C
+import qualified Control.Monad.Loops as L
+
 data Tale = Tale {
 					name 	:: String,
 					link	:: String,
@@ -7,7 +24,7 @@ data Tale = Tale {
 					num		:: Int,
 					rate	:: Maybe Float,
 					desc	:: String
-				} deriving(Show)
+				} deriving(Show, Eq)
 
 getAnchor :: (Tag [Char] -> Bool) -> [Tag [Char]] -> [(String,String)]
 getAnchor f [] = []
@@ -32,14 +49,28 @@ parseBlock x = Tale {
 						rate 	= Nothing
 					}
 
-genreMap :: String -> index -> IO [Tale]
+genreMap :: String -> Int -> IO [Tale]
 genreMap link index = do
 						cnv <- open "CP1251" Nothing
 						stories <- fmap Data.Text.unpack $ fmap (toUnicode cnv) $ fmap C.pack  $ simpleHTTP (getRequest ("http://stulchik.net/" ++ link ++ "_" ++ (show index))) >>= getResponseBody
 						return ( pageConvert stories )						
-							
+
+--getAllTalesInGenre :: String -> IO [Tale]
+getAllTalesInGenre genre = whileM (/=[]) [1..] ( genreMap genre)
+
+whileM :: Monad m => (a -> Bool) -> [b] -> (b -> m a) -> m [a]
+whileM _ [] _ = return []
+whileM p (x:xs) m = do
+    a <- m x
+    if p a then do
+        b <- whileM p xs m
+        return $ a : b
+    else
+        return []
+
 pageConvert :: String -> [Tale]
 pageConvert stories = map parseBlock $ map (splitWhen (~== TagOpen "br" [])) $ reverse . tail . reverse $ helper1 $ parseTags stories
+						
 						
 					
 main :: IO ()
@@ -47,7 +78,11 @@ main = do
 	cnv <- open "CP1251" Nothing 
     genres <- fmap Data.Text.unpack $ fmap (toUnicode cnv) $ fmap C.pack  $ simpleHTTP (getRequest "http://stulchik.net/main.shtml?ras") >>= getResponseBody
    
-    let categories = getAnchor (\x -> (x ~== TagOpen "a" []) && ( fromAttrib "href" x =~ "ras.shtml\\?kat")) $ parseTags(genres)
+    let categories = map fst $ getAnchor (\x -> (x ~== TagOpen "a" []) && ( fromAttrib "href" x =~ "ras.shtml\\?kat")) $ parseTags(genres)
+    tales <- Control.Monad.Loops.forkMapM getAllTalesInGenre categories
+
+
+
 
     
 

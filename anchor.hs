@@ -23,7 +23,7 @@ data Tale = Tale {
 					num		:: Int,
 					rate	:: Maybe Float,
 					desc	:: String
-				} deriving(Show)
+				} deriving(Show, Eq)
 
 getAnchor :: (Tag [Char] -> Bool) -> [Tag [Char]] -> [(String,String)]
 getAnchor f [] = []
@@ -54,9 +54,19 @@ genreMap link index = do
 						stories <- fmap Data.Text.unpack $ fmap (toUnicode cnv) $ fmap C.pack  $ simpleHTTP (getRequest ("http://stulchik.net/" ++ link ++ "_" ++ (show index))) >>= getResponseBody
 						return ( pageConvert stories )						
 
-getAllTalesInGenres :: [String] -> IO [Tale]
-getAllTalesInGenres genres = 
-						
+--getAllTalesInGenre :: String -> IO [Tale]
+getAllTalesInGenre genre = whileM (/=[]) [1..] ( genreMap genre)
+
+whileM :: Monad m => (a -> Bool) -> [b] -> (b -> m a) -> m [a]
+whileM _ [] _ = return []
+whileM p (x:xs) m = do
+    a <- m x
+    if p a then do
+        b <- whileM p xs m
+        return $ a : b
+    else
+        return []
+
 pageConvert :: String -> [Tale]
 pageConvert stories = map parseBlock $ map (splitWhen (~== TagOpen "br" [])) $ reverse . tail . reverse $ helper1 $ parseTags stories
 						
